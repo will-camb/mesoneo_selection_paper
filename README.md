@@ -28,7 +28,7 @@ For the UKB data I used hard genotype calls which were extracted from .bgen file
 
 I did this in one step using qctool (https://www.well.ox.ac.uk/~gav/qctool_v2/), merging the ancient and modern data (both in VCF format), and subsetting the positions. For each chromosome, something like:
 
-qctool -g /willerslev/ukbiobank/nonbritish/merged_vcfs/ukbb.haplotype_chrN.GT.chrinfo.samples.vcf.gz -g /willerslev/users-shared/science-snm-willerslev-wl4sn3/step3_postprocessing/step5_release/15062020/chrN.haplotypes.filtered.N1664.D15062020.GLIMPSE.vcf.gz -og merged.N.vcf -os merged.N.samples -compare-variants-by position -flip-to-match-cohort1 -incl-samples keep_samples -incl-positions /willerslev/ukbiobank/SNP_selection/qctool_format/N_SNPs_formatted.txt
+```qctool -g /willerslev/ukbiobank/nonbritish/merged_vcfs/ukbb.haplotype_chrN.GT.chrinfo.samples.vcf.gz -g /willerslev/users-shared/science-snm-willerslev-wl4sn3/step3_postprocessing/step5_release/15062020/chrN.haplotypes.filtered.N1664.D15062020.GLIMPSE.vcf.gz -og merged.N.vcf -os merged.N.samples -compare-variants-by position -flip-to-match-cohort1 -incl-samples keep_samples -incl-positions /willerslev/ukbiobank/SNP_selection/qctool_format/N_SNPs_formatted.txt```
 
 where keep_samples lists all ancient and modern IDs that you want to include, and N_SNPs_formatted.txt is a file containing SNPs in the UKB array. This is about ~820k SNPs chosen for markers of specific interest, rare coding variants, and genome-wide coverage. When combined with the imputed ancient data we end up with about 550K SNPs. Chromopainter will not accept missing data.
 
