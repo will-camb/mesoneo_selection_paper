@@ -36,13 +36,13 @@ where keep_samples lists all ancient and modern IDs that you want to include, an
 
 I filtered for MAF > 0.01 using bcftools. Something like:
 
-```bcftools view -q 0.01:minor merged.N.vcf.gz -o merged.N.filtered.vcf.gz```
+	bcftools view -q 0.01:minor merged.N.vcf.gz -o merged.N.filtered.vcf.gz
 
 4.	Convert VCF to phase format
 
 Phase format is the chromopainter input format (more info here https://people.maths.bris.ac.uk/~madjl/finestructure/manual.html). There are a few ways to convert a vcf to phasefile format, but they’re all slow (i.e. takes many days/weeks) with large numbers of samples and can’t be parallelised. I found that the best way to do this was to split the vcf by sample, then convert these individual vcf files to phase format and concatenate the results. It’s a little hacky but speeds it up massively. To split the vcf for each chromosome N:
 
-	```bcftools plugin split merged.N.filtered.vcf.gz --samples-file samples0 -Oz -o haps.N```
+	bcftools plugin split merged.N.filtered.vcf.gz --samples-file samples0 -Oz -o haps.N
 
 Then using script vcf_to_phase.sh (which uses pbwt [https://github.com/richarddurbin/pbwt] and the script impute2chromopainter.pl which is included as part of fineSTRUCTURE), I wrote separate commands to convert each vcf to a phasefile. Using python (pandas) to generate these commands, where file samples contains all sample IDs (modern and ancient):
 
@@ -63,7 +63,8 @@ To get the top three lines for the phase format, we run the same commands as in 
 impute2chromopainter.pl haps.N/X.haps temp.N.X.phase
 head -n 3 temp.N.X.phase > temp.N.header.phase
 cat merged.N.phase >> temp.N.header.phase
-mv temp.N.header.phase N.merged.phase```
+mv temp.N.header.phase N.merged.phase
+```
 
 We now have a phasefile with all the samples in the same order as in file samples. The only thing we need to do is edit the number of haplotypes (i.e. 2x number of individuals) which is specified in the first line of the phasefile. Depending on the number, something like:
 
