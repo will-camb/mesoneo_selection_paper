@@ -55,7 +55,7 @@ Then using script vcf_to_phase.sh (which uses pbwt [https://github.com/richarddu
 
 Which creates a separate command file for each chromosome which can then be run in parallel. To then concatenate the files in the correct order for chromosome N:
 
-	```while read p; do cat phase.N/$p.reduced.phase >> merged.N.phase; done <samples```
+	while read p; do cat phase.N/$p.reduced.phase >> merged.N.phase; done <samples
 
 To get the top three lines for the phase format, we run the same commands as in vcf_to_phase.sh just for one sample but keep the top three lines instead. For example, for chromosome N and sample X:
 
@@ -69,13 +69,15 @@ mv temp.N.header.phase N.merged.phase
 We now have a phasefile with all the samples in the same order as in file samples. The only thing we need to do is edit the number of haplotypes (i.e. 2x number of individuals) which is specified in the first line of the phasefile. Depending on the number, something like:
 
 ```nhaps=SOME NUMBER
-for chr in $chrlist ; do sed -i "1s/.*/$nhaps/" $chr.merged.phase; done```
+for chr in $chrlist ; do sed -i "1s/.*/$nhaps/" $chr.merged.phase; done
+```
 
 5.	Make recombination input file
 
 We need to make a file specifying recombination rates between our included SNPs. I used the recombination maps from the International Hapmap Consortium phase II release, and the command for each chromosome looked like: 
 
-```convertrecfile.pl -M hapmap phasefiles/$chr.merged.phase 2011-01_phaseII_B37/genetic_map_GRCh37_chr$chr.txt recombfiles/$chr.recombfile```
+```convertrecfile.pl -M hapmap phasefiles/$chr.merged.phase 2011-01_phaseII_B37/genetic_map_GRCh37_chr$chr.txt recombfiles/$chr.recombfile
+```
 
 convertrecfile.pl is a script included in fineSTRUCTURE.
 
@@ -108,7 +110,8 @@ PAINTING PROCESS
 Make sure the idfile and phasefile have the target panel at the top and the reference panel below. 
 
 Step 1: Run fineSTRUCTURE on the reference panel only
-```fs ref_panel.cp -idfile ordered_all_pop_ids_mapped -phasefiles phasefiles/{1..22}.merged.phase -recombfiles ../recombfiles/{1..22}.recombfile -hpc 1 -go```
+```fs ref_panel.cp -idfile ordered_all_pop_ids_mapped -phasefiles phasefiles/{1..22}.merged.phase -recombfiles ../recombfiles/{1..22}.recombfile -hpc 1 -go
+```
 
 This gives Ne and mu estimates, which can be found in ref_panel.cp file.
 
@@ -118,7 +121,8 @@ Edit will_ancientvsancient.cp (including popneinf and popmuinf from fineSTRUCTUR
 Paint ancient panel vs ancient panel to get priors. This paints individuals in reference panel against the panel (but not including itself) using uniform prior first, to obtain the overall copying averages; then repaints using previous run as prior.
 
 Commands:
-```bash will_03-paintpanelvspanel.sh```
+```bash will_03-paintpanelvspanel.sh
+```
 This runs will_paint_withinpanel.sh, which in turn runs will_paintsample_withinpanel.sh on each sample.
 
 Step 3: Run stage04
@@ -148,7 +152,8 @@ I had a memory problem when running painting in parallel because each thread has
     print("mkdir batch_files")
     print("split -l 1000 -d --additional-suffix=.txt paintvspanel1by1_commands.txt batch_commands")
     print("mv batch_commands* batch_files")
-    print("cd ../")```
+    print("cd ../")
+	    ```
 
 Each of these command files (found in batch_commands, 1000 commands in each) was then run on a separate node. E.g. on computerome:
 qsub -W group_list=geogenetics -A geogenetics -l nodes=1:ppn=40,walltime=100:00:00,mem=100gb -N paint_panel0 -F 00 run_batch.sh
