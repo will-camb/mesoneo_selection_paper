@@ -76,8 +76,7 @@ for chr in $chrlist ; do sed -i "1s/.*/$nhaps/" $chr.merged.phase; done
 
 We need to make a file specifying recombination rates between our included SNPs. I used the recombination maps from the International Hapmap Consortium phase II release, and the command for each chromosome looked like: 
 
-```convertrecfile.pl -M hapmap phasefiles/$chr.merged.phase 2011-01_phaseII_B37/genetic_map_GRCh37_chr$chr.txt recombfiles/$chr.recombfile
-```
+	convertrecfile.pl -M hapmap phasefiles/$chr.merged.phase 2011-01_phaseII_B37/genetic_map_GRCh37_chr$chr.txt recombfiles/$chr.recombfile
 
 convertrecfile.pl is a script included in fineSTRUCTURE.
 
@@ -101,17 +100,20 @@ UKBB2 UKBB 1
 NB the idfile must be in the same order as the phasefile. 
 
 Painting
+
 When the data preparation steps above are done, you should have:
+	
 •	A phasefile for each chromosome
 •	A recombination file for each chromosome
 •	An idfile specifying all your ancient and modern individuals, and which population they are in. 
  
 PAINTING PROCESS
+	
 Make sure the idfile and phasefile have the target panel at the top and the reference panel below. 
 
 Step 1: Run fineSTRUCTURE on the reference panel only
-```fs ref_panel.cp -idfile ordered_all_pop_ids_mapped -phasefiles phasefiles/{1..22}.merged.phase -recombfiles ../recombfiles/{1..22}.recombfile -hpc 1 -go
-```
+	
+	fs ref_panel.cp -idfile ordered_all_pop_ids_mapped -phasefiles phasefiles/{1..22}.merged.phase -recombfiles ../recombfiles/{1..22}.recombfile -hpc 1 -go
 
 This gives Ne and mu estimates, which can be found in ref_panel.cp file.
 
@@ -121,14 +123,14 @@ Edit will_ancientvsancient.cp (including popneinf and popmuinf from fineSTRUCTUR
 Paint ancient panel vs ancient panel to get priors. This paints individuals in reference panel against the panel (but not including itself) using uniform prior first, to obtain the overall copying averages; then repaints using previous run as prior.
 
 Commands:
-```bash will_03-paintpanelvspanel.sh
-```
+	bash will_03-paintpanelvspanel.sh
+	
 This runs will_paint_withinpanel.sh, which in turn runs will_paintsample_withinpanel.sh on each sample.
 
 Step 3: Run stage04
 I had a memory problem when running painting in parallel because each thread has to read in the entire phasefiles, so I decided to run in separate batches of 24k. Within each 24k batch, I ran will_3.5-paintvspanel1by1.py which writes commands for 24k individuals, then splits these into separate batchcommands in batch_files folder. To generate commands for this in python:
 
-```for j in range(1,410000,24000):
+	for j in range(1,410000,24000):
     print("dir=split_"+str(j)+"-"+str((j-1)+24000))
     print("phaselinenumber="+str((j+1)*2))
     print("phaselinenumber2="+str(2*(j+24000)+1))
@@ -153,7 +155,6 @@ I had a memory problem when running painting in parallel because each thread has
     print("split -l 1000 -d --additional-suffix=.txt paintvspanel1by1_commands.txt batch_commands")
     print("mv batch_commands* batch_files")
     print("cd ../")
-	    ```
 
 Each of these command files (found in batch_commands, 1000 commands in each) was then run on a separate node. E.g. on computerome:
 qsub -W group_list=geogenetics -A geogenetics -l nodes=1:ppn=40,walltime=100:00:00,mem=100gb -N paint_panel0 -F 00 run_batch.sh
@@ -165,40 +166,42 @@ What this does: runs painting of one target individual per thread:
 This makes a new temporary directory for each individual, including phasefile with 1 target + all reference. It then runs will_04-paintvspanel.sh, which in turn runs will_paint_withinpanel-b.sh. This paints the target individuals and stores the local painting output in a memory efficient format. 
 
 When these have all run, we cat the results together in the right order. Commands (where ukbb_samples is a file containing the 24000 IDs of the target individuals, one per line): 
-```python3
-import pandas as pd
-df=pd.read_csv("ordered_all_pop_ids_mapped", sep=" ", header=None)
-df=df[0]
-df1 = df.head(24000)
-df1.to_csv("ukbb_samples", index=False, header=False, sep=" ")
-exit()
-chrlist=`seq 1 22`
-for chr in $chrlist 
-do while read p
-do cat temp.$p/will_modernvsancient/painting/$chr.all_copyprobsperlocus.txt >> $chr.master_all_copyprobsperlocus.txt
-done < ukbb_samples
-done
+	    
+	python3
+	import pandas as pd
+	df=pd.read_csv("ordered_all_pop_ids_mapped", sep=" ", header=None)
+	df=df[0]
+	df1 = df.head(24000)
+	df1.to_csv("ukbb_samples", index=False, header=False, sep=" ")
+	exit()
+	chrlist=`seq 1 22`
+	for chr in $chrlist 
+	do while read p
+	do cat temp.$p/will_modernvsancient/painting/$chr.all_copyprobsperlocus.txt >> $chr.master_all_copyprobsperlocus.txt
+	done < ukbb_samples
+	done
 
-while read p; do
-awk "NR==3" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.chunkcounts.out >> ordered_all_pop_ids_mapped.allchr.chunkcounts.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.chunklengths.out >> ordered_all_pop_ids_mapped.allchr.chunklengths.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.mutationprobs.out >> ordered_all_pop_ids_mapped.allchr.mutationprobs.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.regionchunkcounts.out >> ordered_all_pop_ids_mapped.allchr.regionchunkcounts.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.regionsquaredchunkcounts.out >> ordered_all_pop_ids_mapped.allchr.regionsquaredchunkcounts.out
-done < ukbb_samples
-mkdir perchrom_results
-for chr in $chrlist
-do while read p; do
-awk "NR==3" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.chunkcounts.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.chunkcounts.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.chunklengths.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.chunklengths.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.mutationprobs.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.mutationprobs.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.regionchunkcounts.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.regionchunkcounts.out
-awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.regionsquaredchunkcounts.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.regionsquaredchunkcounts.out
-done < ukbb_samples
-done```
+	while read p; do
+	awk "NR==3" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.chunkcounts.out >> ordered_all_pop_ids_mapped.allchr.chunkcounts.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.chunklengths.out >> ordered_all_pop_ids_mapped.allchr.chunklengths.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.mutationprobs.out >> ordered_all_pop_ids_mapped.allchr.mutationprobs.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.regionchunkcounts.out >> ordered_all_pop_ids_mapped.allchr.regionchunkcounts.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.allchr.regionsquaredchunkcounts.out >> ordered_all_pop_ids_mapped.allchr.regionsquaredchunkcounts.out
+	done < ukbb_samples
+	mkdir perchrom_results
+	for chr in $chrlist
+	do while read p; do
+	awk "NR==3" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.chunkcounts.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.chunkcounts.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.chunklengths.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.chunklengths.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.mutationprobs.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.mutationprobs.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.regionchunkcounts.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.regionchunkcounts.out
+	awk "NR==2" temp.$p/will_modernvsancient/painting/ordered_all_pop_ids_mapped.chr$chr.regionsquaredchunkcounts.out >> perchrom_results/ordered_all_pop_ids_mapped.chr$chr.regionsquaredchunkcounts.out
+	done < ukbb_samples
+	done
+
 
 Then run clean_and_repaint.sh which checks the results files, removes bad lines, and writes commands to repaint remaining individuals. E.g. on computerome:
-```qsub -W group_list=geogenetics -A geogenetics -l nodes=1:ppn=1,walltime=100:00:00,mem=100gb -N clean_and_repaint clean_and_repaint.sh```
+	qsub -W group_list=geogenetics -A geogenetics -l nodes=1:ppn=1,walltime=100:00:00,mem=100gb -N clean_and_repaint clean_and_repaint.sh
 
 Once repainted (i.e. you’ve run the new commands in batch_files), run clean_and_repaint.sh again. Repeat until there are no more commands to run (this may happen on the first time, or it might take a few goes). 
 
